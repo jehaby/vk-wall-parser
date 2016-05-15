@@ -3,6 +3,7 @@
 namespace AppBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use Doctrine\Common\Collections\ArrayCollection;
 
 /**
  * SearchQuery
@@ -21,6 +22,12 @@ class SearchQuery
      */
     private $id;
 
+    /**
+     * @var
+     *
+     * @ORM\ManyToMany(targetEntity="AppBundle\Entity\SearchQuery", mappedBy="searchQueries")
+     */
+    private $posts;
 
     /**
      * @var string
@@ -33,6 +40,7 @@ class SearchQuery
     public function __construct($text)
     {
         $this->setText($text);
+        $this->posts = new ArrayCollection();
     }
 
     /**
@@ -59,6 +67,22 @@ class SearchQuery
     public function setText($text)
     {
         $this->text = $text;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getPosts()
+    {
+        return $this->posts;
+    }
+
+    /**
+     * @param mixed $posts
+     */
+    public function setPosts($posts)
+    {
+        $this->posts = $posts;
     }
 
 }

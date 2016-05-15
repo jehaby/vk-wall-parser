@@ -4,6 +4,7 @@ namespace AppBundle\Entity;
 
 use Cake\Chronos\Chronos;
 use Doctrine\ORM\Mapping as ORM;
+use Doctrine\Common\Collections\ArrayCollection;
 
 /**
  * Post
@@ -33,7 +34,7 @@ class Post
     /**
      * @var
      *
-     * @ORM\Column(name="date", type="datetime")
+     * @ORM\Column(name="date", type="integer")
      */
     private $date;
 
@@ -41,7 +42,6 @@ class Post
     /**
      * @var int
      *
-     * @ORM\Column(name="signer_id", type="bigint")
      */
     private $signerId;
 
@@ -51,6 +51,20 @@ class Post
      * @ORM\Column(name="real_author_id", type="integer")
      */
     private $realAuthorId;
+
+    /**
+     * @var
+     *
+     * @ORM\ManyToMany(targetEntity="AppBundle\Entity\SearchQuery", inversedBy="posts")
+     * @ORM\JoinTable(name="posts_search_queries")
+     */
+    private $searchQueries;
+
+
+    public function __construct()
+    {
+        $this->searchQueries = new ArrayCollection();
+    }
     
     /**
      * Get id
@@ -133,6 +147,32 @@ class Post
     public function setRealAuthorId($realAuthorId)
     {
         $this->realAuthorId = $realAuthorId;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getSearchQueries()
+    {
+        return $this->searchQueries;
+    }
+
+    public function addSearchQuery(SearchQuery $searchQuery)
+    {
+        $this->searchQueries->add($searchQuery);
+    }
+
+    public function belongsToSearchQuery(SearchQuery $searchQuery)
+    {
+        return $this->searchQueries->contains($searchQuery);
+    }
+    
+    /**
+     * @param mixed $searchQueries
+     */
+    public function setSearchQueries($searchQueries)
+    {
+        $this->searchQueries = $searchQueries;
     }
 
 }

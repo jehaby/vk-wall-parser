@@ -4,9 +4,29 @@ parameters:
 #    parameter_name: value
 
 services:
-    app.post_factory:
 
+    app.post_repository:
+        class: Doctrine\ORM\EntityRepository
+        factory: ["@doctrine.orm.entity_manager", getRepository]
+        arguments:
+            - AppBundle\Entity\Post
+
+    app.search_query_repository:
+        class: Doctrine\ORM\EntityRepository
+        factory: ["@doctrine.orm.entity_manager", getRepository]
+        arguments:
+            - AppBundle\Entity\SearchQuery
+
+    app.post_factory:
         class: AppBundle\Factory\PostFactory
         arguments: ["@logger"]
 #        arguments: ["@another_service_name", "plain_value", "%parameter_name%"]
 
+    app.parser_service:
+        class: AppBundle\Service\ParserService
+        arguments:
+            - "@app.post_repository"
+            - "@app.search_query_repository"
+            - "@doctrine.orm.entity_manager"
+            - "@app.post_factory"
+            - "@logger"
