@@ -4,6 +4,9 @@ parameters:
 #    parameter_name: value
 
 services:
-#    service_name:
-#        class: AppBundle\Directory\ClassName
+    app.post_factory:
+
+        class: AppBundle\Factory\PostFactory
+        arguments: ["@logger"]
 #        arguments: ["@another_service_name", "plain_value", "%parameter_name%"]
+

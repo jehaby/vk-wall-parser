@@ -26,11 +26,14 @@
         "symfony/monolog-bundle": "^2.8",
         "sensio/distribution-bundle": "^5.0",
         "sensio/framework-extra-bundle": "^3.0.2",
-        "incenteev/composer-parameter-handler": "^2.0"
+        "incenteev/composer-parameter-handler": "^2.0",
+        "guzzlehttp/guzzle": "^6.2",
+        "cakephp/chronos": "^0.4.9"
     },
     "require-dev": {
         "sensio/generator-bundle": "^3.0",
-        "symfony/phpunit-bridge": "^3.0"
+        "symfony/phpunit-bridge": "^3.0",
+        "phpspec/phpspec": "^2.5"
     },
     "scripts": {
         "post-install-cmd": [
