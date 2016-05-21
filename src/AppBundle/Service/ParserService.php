@@ -8,10 +8,12 @@ use AppBundle\Repository\SearchQueryRepository;
 use AppBundle\Entity\SearchQuery;
 use AppBundle\Entity\Post;
 use AppBundle\Factory\PostFactory;
+use Doctrine\Common\Collections\Criteria;
 use GuzzleHttp\Client;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Doctrine\Common\Collections\ArrayCollection;
+use Cake\Chronos\Chronos;
 
 /**
  * Class ParserService
@@ -22,33 +24,39 @@ class ParserService
     /**
      * @var PostRepository
      */
-    private $postRepository;
+    protected $postRepository;
 
     /**
      * @var SearchQueryRepository
      */
-    private $searchQueryRepository;
+    protected $searchQueryRepository;
 
     /**
      * @var EntityManagerInterface
      */
-    private $entityManager;
+    protected $entityManager;
 
     /**
      * @var Client;
      */
-    private $httpClient;
+    protected $httpClient;
 
 
     /**
      * @var PostFactory
      */
-    private $postFactory;
+
+    protected $postFactory;
+
+    /**
+     * @var SamePostsDetector
+     */
+    protected $detector;
 
     /**
      * @var LoggerInterface
      */
-    private $logger;
+    protected $logger;
 
 
     /**
@@ -57,6 +65,7 @@ class ParserService
      * @param SearchQueryRepository $searchQueryRepository
      * @param EntityManagerInterface $entityManager
      * @param PostFactory $postFactory
+     * @param SamePostsDetector $detector
      * @param LoggerInterface $logger
      */
     public function __construct(
@@ -64,6 +73,7 @@ class ParserService
         SearchQueryRepository $searchQueryRepository,
         EntityManagerInterface $entityManager,
         PostFactory $postFactory,
+        SamePostsDetector $detector,
         LoggerInterface $logger
     )
     {
@@ -72,6 +82,7 @@ class ParserService
         $this->entityManager = $entityManager;
         $this->postFactory = $postFactory;
         $this->httpClient = new Client(['base_uri' => 'http://api.vk.com/']);
+        $this->detector = $detector;
         $this->logger = $logger;
     }
 
@@ -89,11 +100,11 @@ class ParserService
     {
         $postsFromApi = $this->getPostsFromVk($query);
 
-        /** @var Post[] $postsInDb */
-        $postsInDb = $this->postRepository->findBy(['id' => $postsFromApi->getKeys()]);
+        /** @var Post[] $savedPostsWithSameId */
+        $savedPostsWithSameId = $this->postRepository->findBy(['id' => $postsFromApi->getKeys()]);
 
         // TODO: try to use other posts (gotten from api)
-        foreach ($postsInDb as $post) {
+        foreach ($savedPostsWithSameId as $post) {
             if (!$post->belongsToSearchQuery($query)) {
                 $post->addSearchQuery($query);
             }
@@ -101,8 +112,27 @@ class ParserService
             $this->entityManager->persist($post);
         }
 
-        foreach ($postsFromApi as $post) {
-            $this->entityManager->persist($post);
+        /** @var Post[] $savedPostsFromSameAuthors */
+        $savedPostsFromSameAuthors = $this->getRecentPostsFromSameAuthors($postsFromApi);
+
+        /** @var array[Post[]] $postsFromApi */
+        $postsFromApi = $this->groupPostsByAuthor($postsFromApi);
+
+        foreach ($savedPostsFromSameAuthors as $savedPost) {
+            $key = $savedPost->getRealAuthorId();
+
+            /** @var ArrayCollection $postsFromSameAuthor */
+            $postsFromSameAuthor = $postsFromApi->get($key);
+
+            foreach ($postsFromSameAuthor as $postFromApi) {
+                if ($this->detector->isPostsSame($postFromApi->getText(), $savedPost->getText())) {
+                    $postsFromSameAuthor->removeElement($postsFromApi);
+                }
+            }
+
+            foreach ($postsFromSameAuthor as $post) {
+                $this->entityManager->persist($post);
+            }
         }
 
         $this->entityManager->flush();
@@ -137,6 +167,7 @@ class ParserService
             ->getContents();
 
         $res = \GuzzleHttp\json_decode($res, true)['response']['items'];
+
         $postsFromApi = new ArrayCollection();
         foreach ($res as $post) {
             try {
@@ -147,6 +178,49 @@ class ParserService
             }
         }
         return $postsFromApi;
+    }
+
+    /**
+     * @param Post[] $posts
+     * @return ArrayCollection
+     */
+    protected function getRecentPostsFromSameAuthors(ArrayCollection $posts)
+    {
+        $ids = array_map(
+            function (Post $post) {
+                return $post->getRealAuthorId();
+            },
+            $posts->getValues()
+        );
+
+        $criteria = new Criteria();
+        $criteria
+            ->where($criteria->expr()->gt('date', Chronos::now()->subDays(7)->toUnixString()))
+            ->andWhere($criteria->expr()->in('realAuthorId', $ids));
+
+        $res = $this->postRepository->matching($criteria);
+
+        return $res;
+    }
+
+    /**
+     * @param Post[] $posts
+     * @return ArrayCollection
+     */
+    protected function groupPostsByAuthor(ArrayCollection $posts)
+    {
+        $res = new ArrayCollection();
+
+        foreach ($posts as $post) {
+            $key = $post->getRealAuthorId();
+            $val = $res->get($key);
+            $res->set(
+                $key,
+                $val ? $val->add($post) : new ArrayCollection([$post])
+            );
+        }
+
+        return $res;
     }
 
 
