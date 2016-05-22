@@ -7,10 +7,12 @@ use AppBundle\Repository\PostRepository;
 use AppBundle\Repository\SearchQueryRepository;
 use AppBundle\Entity\SearchQuery;
 use AppBundle\Entity\Post;
+use AppBundle\Service\MailerService;
 use GuzzleHttp\Client;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Doctrine\Common\Collections\ArrayCollection;
+
 
 /**
  * Class ParserService
@@ -21,27 +23,32 @@ class ParserService
     /**
      * @var PostRepository
      */
-    private $postRepository;
+    protected $postRepository;
 
     /**
      * @var SearchQueryRepository
      */
-    private $searchQueryRepository;
+    protected $searchQueryRepository;
 
     /**
      * @var EntityManagerInterface
      */
-    private $entityManager;
+    protected $entityManager;
 
     /**
      * @var Client;
      */
-    private $httpClient;
+    protected $httpClient;
+
+    /**
+     * @var MailerService
+     */
+    protected $mailer;
 
     /**
      * @var LoggerInterface
      */
-    private $logger;
+    protected $logger;
 
 
     /**
@@ -49,12 +56,14 @@ class ParserService
      * @param PostRepository $postRepository
      * @param SearchQueryRepository $searchQueryRepository
      * @param EntityManagerInterface $entityManager
+     * @param MailerService $mailer
      * @param LoggerInterface $logger
      */
     public function __construct(
         PostRepository $postRepository,
         SearchQueryRepository $searchQueryRepository,
         EntityManagerInterface $entityManager,
+        MailerService $mailer,
         LoggerInterface $logger
     )
     {
@@ -62,6 +71,7 @@ class ParserService
         $this->searchQueryRepository = $searchQueryRepository;
         $this->entityManager = $entityManager;
         $this->httpClient = new Client(['base_uri' => 'http://api.vk.com/']);
+        $this->mailer = $mailer;
         $this->logger = $logger;
     }
 
@@ -91,19 +101,16 @@ class ParserService
             $this->entityManager->persist($post);
         }
 
+        $this->mailer->send($postsFromApi);
+        
         foreach ($postsFromApi as $post) {
             $this->entityManager->persist($post);
         }
 
         $this->entityManager->flush();
-
-        /*
-         * search new post
-         * get their ids
-         * query db for saved posts with such ids (lazy loading related searchqeury)
-         * if post exists, check if it's new query
-         */
     }
+    
+    
 
     protected function getPostsFromVk(SearchQuery $query)
     {
@@ -119,7 +126,7 @@ class ParserService
                     'query' => array_replace_recursive($baseOptions, [
                         'query' => $query->getText(),
                         'count' => 100,
-                        'owners_only',
+                        'owners_only' => 1,
                     ])
                 ]
             )
@@ -127,9 +134,9 @@ class ParserService
             ->getContents();
 
         $res = \GuzzleHttp\json_decode($res, true)['response']['items'];
-        
+
         $postsFromApi = new ArrayCollection();
-        
+
         foreach ($res as $post) {
             try {
                 $postsFromApi->set($postId = $post['id'], Post::createFromApiArray($post, $query));
@@ -138,9 +145,11 @@ class ParserService
                 continue;
             }
         }
-        
+
         return $postsFromApi;
     }
-
+    
+    
+    
 
 }

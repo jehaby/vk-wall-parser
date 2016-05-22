@@ -17,10 +17,17 @@ services:
         arguments:
             - AppBundle\Entity\SearchQuery
 
+    app.mailer:
+        class: AppBundle\Service\MailerService
+        arguments:
+            - "@mailer"
+            - "@twig"
+
     app.parser_service:
         class: AppBundle\Service\ParserService
         arguments:
             - "@app.post_repository"
             - "@app.search_query_repository"
             - "@doctrine.orm.entity_manager"
+            - "@app.mailer"
             - "@logger"

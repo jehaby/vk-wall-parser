@@ -23,11 +23,8 @@ class DefaultController extends Controller
     {
         $ps = $this->get('app.parser_service');
         $ps->parse();
-        die('here');
 
-        // replace this example code with whatever you need
-        return $this->render('default/index.html.twig', [
-            'base_dir' => realpath($this->getParameter('kernel.root_dir') . '/..'),
-        ]);
+        return $this->render('index.html.twig');
+
     }
 }

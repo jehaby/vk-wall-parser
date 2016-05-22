@@ -125,6 +125,14 @@ class Post
     }
 
     /**
+     * @return string
+     */
+    public function getVkLink()
+    {
+        return 'http://vk.com/yuytnoe_gnezdishko?w=wall-57466174_' . $this->id;
+    }
+
+    /**
      * @return mixed
      */
     public function getSearchQueries()
@@ -155,8 +163,8 @@ class Post
         if (isset($data['signer_id'])) {
             return $data['signer_id'];
         }
-        if (isset($data['copy_history']['owner_id'])) {
-            return $data['copy_history']['owner_id'];
+        if (isset($data['copy_history'][0]['owner_id'])) {
+            return $data['copy_history'][0]['owner_id'];
         }
         throw new Exception\UnknowAuthorException($data);
     }

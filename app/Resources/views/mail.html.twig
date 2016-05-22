@@ -1,0 +1,21 @@
+<html>
+<head>
+
+</head>
+<body>
+
+  {% for post in posts %}
+    <div>
+      <p>
+        {{ post.text }}
+      </p>
+      <p>
+        {{ post.date | date("Y-m-d") }} |
+        <a href="{{ post.getVkLink() }}">ссылка</a>
+      </p>
+    </div>
+  {% endfor %}
+
+</body>
+
+</html>
