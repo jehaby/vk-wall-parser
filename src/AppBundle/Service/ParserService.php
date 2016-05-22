@@ -7,7 +7,6 @@ use AppBundle\Repository\PostRepository;
 use AppBundle\Repository\SearchQueryRepository;
 use AppBundle\Entity\SearchQuery;
 use AppBundle\Entity\Post;
-use AppBundle\Factory\PostFactory;
 use GuzzleHttp\Client;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -39,12 +38,6 @@ class ParserService
      */
     private $httpClient;
 
-
-    /**
-     * @var PostFactory
-     */
-    private $postFactory;
-
     /**
      * @var LoggerInterface
      */
@@ -56,21 +49,18 @@ class ParserService
      * @param PostRepository $postRepository
      * @param SearchQueryRepository $searchQueryRepository
      * @param EntityManagerInterface $entityManager
-     * @param PostFactory $postFactory
      * @param LoggerInterface $logger
      */
     public function __construct(
         PostRepository $postRepository,
         SearchQueryRepository $searchQueryRepository,
         EntityManagerInterface $entityManager,
-        PostFactory $postFactory,
         LoggerInterface $logger
     )
     {
         $this->postRepository = $postRepository;
         $this->searchQueryRepository = $searchQueryRepository;
         $this->entityManager = $entityManager;
-        $this->postFactory = $postFactory;
         $this->httpClient = new Client(['base_uri' => 'http://api.vk.com/']);
         $this->logger = $logger;
     }
@@ -137,15 +127,18 @@ class ParserService
             ->getContents();
 
         $res = \GuzzleHttp\json_decode($res, true)['response']['items'];
+        
         $postsFromApi = new ArrayCollection();
+        
         foreach ($res as $post) {
             try {
-                $postId = $post['id'];
-                $postsFromApi->set($postId, $this->postFactory->createFromArray($post, $query));
+                $postsFromApi->set($postId = $post['id'], Post::createFromApiArray($post, $query));
             } catch (\Exception $e) {
+                $this->logger->error($e->getMessage());
                 continue;
             }
         }
+        
         return $postsFromApi;
     }
 

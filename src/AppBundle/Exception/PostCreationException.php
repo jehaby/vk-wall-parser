@@ -1,7 +1,7 @@
 <?php
 
 
-namespace AppBundle\Factory;
+namespace AppBundle\Exception;
 
 
 class PostCreationException extends \Exception

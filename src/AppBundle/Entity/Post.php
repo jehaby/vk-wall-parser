@@ -5,6 +5,7 @@ namespace AppBundle\Entity;
 use Cake\Chronos\Chronos;
 use Doctrine\ORM\Mapping as ORM;
 use Doctrine\Common\Collections\ArrayCollection;
+use AppBundle\Exception;
 
 /**
  * Post
@@ -47,7 +48,7 @@ class Post
 
     /**
      * @var int
-     * 
+     *
      * @ORM\Column(name="real_author_id", type="integer")
      */
     private $realAuthorId;
@@ -61,11 +62,26 @@ class Post
     private $searchQueries;
 
 
-    public function __construct()
+    private function __construct()
     {
         $this->searchQueries = new ArrayCollection();
     }
-    
+
+
+    public static function createFromApiArray(array $data, SearchQuery $query)
+    {
+        $post = new self();
+        $post->id = $data['id'];
+        $post->text = $data['text'];
+        $post->date = $data['date'];
+        $post->realAuthorId = self::determineRealAuthorId($data);
+        if ($query) {
+            $post->addSearchQuery($query);
+        }
+
+        return $post;
+    }
+
     /**
      * Get id
      *
@@ -77,15 +93,6 @@ class Post
     }
 
     /**
-     * @var int $id
-     */
-    public function setId($id)
-    {
-        $this->id = $id;
-    }
-    
-
-    /**
      * @return string
      */
     public function getText()
@@ -94,27 +101,11 @@ class Post
     }
 
     /**
-     * @param string $text
-     */
-    public function setText($text)
-    {
-        $this->text = $text;
-    }
-
-    /**
      * @return mixed
      */
     public function getDate()
     {
         return $this->date;
-    }    
-    
-    /**
-     * @param mixed $date
-     */
-    public function setDate($date)
-    {
-        $this->date = $date; 
     }
 
     /**
@@ -126,27 +117,11 @@ class Post
     }
 
     /**
-     * @param int $signerId
-     */
-    public function setSignerId($signerId)
-    {
-        $this->signerId = $signerId;
-    }
-
-    /**
      * @return int
      */
     public function getRealAuthorId()
     {
         return $this->realAuthorId;
-    }
-
-    /**
-     * @param int $realAuthorId
-     */
-    public function setRealAuthorId($realAuthorId)
-    {
-        $this->realAuthorId = $realAuthorId;
     }
 
     /**
@@ -166,7 +141,7 @@ class Post
     {
         return $this->searchQueries->contains($searchQuery);
     }
-    
+
     /**
      * @param mixed $searchQueries
      */
@@ -174,6 +149,18 @@ class Post
     {
         $this->searchQueries = $searchQueries;
     }
+
+    protected static function determineRealAuthorId(array $data)
+    {
+        if (isset($data['signer_id'])) {
+            return $data['signer_id'];
+        }
+        if (isset($data['copy_history']['owner_id'])) {
+            return $data['copy_history']['owner_id'];
+        }
+        throw new Exception\UnknowAuthorException($data);
+    }
+
 
 }
 

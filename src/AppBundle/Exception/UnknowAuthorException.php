@@ -1,7 +1,7 @@
 <?php
 
 
-namespace AppBundle\Factory;
+namespace AppBundle\Exception;
 
 
 class UnknowAuthorException extends \Exception
